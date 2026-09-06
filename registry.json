@@ -6,7 +6,7 @@
       "name": "CPA Model Health Monitor",
       "description": "Checks exact channel, credential and model combinations and emails only on state changes.",
       "author": "hansiy",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "repository": "https://github.com/imHansiy/cpa-model-health-monitor",
       "homepage": "https://github.com/imHansiy/cpa-model-health-monitor",
       "license": "MIT",
