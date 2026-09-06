@@ -51,7 +51,7 @@ const (
 	abiVersion = 1
 )
 
-var pluginVersion = "0.1.2"
+var pluginVersion = "0.2.0"
 
 type envelope struct {
 	OK     bool            `json:"ok"`
@@ -224,7 +224,7 @@ func managementRegistrationPayload() managementRegistration {
 		{http.MethodGet, base + "/status"}, {http.MethodGet, base + "/settings"}, {http.MethodPut, base + "/settings"},
 		{http.MethodGet, base + "/auth-files"}, {http.MethodGet, base + "/history"},
 		{http.MethodPost, base + "/run"}, {http.MethodPost, base + "/test-email"},
-	}, Resources: []managementResource{{Path: "/panel", Menu: "Model Health Monitor", Description: "Configure exact channel, credential and model probes with state-change email alerts."}}}
+	}, Resources: []managementResource{{Path: "/panel", Menu: "AI Health Monitor", Description: "Monitor provider reachability, credential readability and exact model calls with state-change email alerts."}}}
 }
 
 func handleManagement(req managementRequest) managementResponse {

@@ -140,6 +140,7 @@ func (realHost) Log(ctx context.Context, level, message string, fields map[strin
 type TargetState struct {
 	TargetID              string    `json:"target_id"`
 	Name                  string    `json:"name"`
+	CheckType             string    `json:"check_type,omitempty"`
 	Status                string    `json:"status"`
 	NotifiedStatus        string    `json:"notified_status,omitempty"`
 	StreakStatus          string    `json:"streak_status,omitempty"`
@@ -157,6 +158,7 @@ type TargetState struct {
 type ProbeResult struct {
 	TargetID   string    `json:"target_id"`
 	Name       string    `json:"name"`
+	CheckType  string    `json:"check_type,omitempty"`
 	Model      string    `json:"model"`
 	Healthy    bool      `json:"healthy"`
 	Status     string    `json:"status"`
@@ -412,7 +414,7 @@ func (r *Runtime) executeRun(ctx context.Context, trigger string) RunRecord {
 }
 
 func cancelledResult(t Target) ProbeResult {
-	return ProbeResult{TargetID: t.ID, Name: t.Name, Model: t.Model, Status: "cancelled", ErrorCode: "cancelled", Error: "probe cancelled", CheckedAt: time.Now().UTC()}
+	return ProbeResult{TargetID: t.ID, Name: t.Name, CheckType: t.CheckType, Model: t.Model, Status: "cancelled", ErrorCode: "cancelled", Error: "probe cancelled", CheckedAt: time.Now().UTC()}
 }
 
 func (r *Runtime) applyResult(cfg Config, result ProbeResult) {
@@ -428,6 +430,7 @@ func (r *Runtime) applyResult(cfg Config, result ProbeResult) {
 		r.state.Targets[result.TargetID] = s
 	}
 	s.Name = result.Name
+	s.CheckType = result.CheckType
 	s.LastCheckedAt = result.CheckedAt
 	s.LastLatencyMS = result.LatencyMS
 	s.LastHTTPStatus = result.HTTPStatus

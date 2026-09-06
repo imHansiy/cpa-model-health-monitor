@@ -19,7 +19,7 @@ type credentialMaterial struct{ Token, AccountID, BaseURL string }
 
 func (r *Runtime) probeTarget(parent context.Context, t Target, timeoutSec int) ProbeResult {
 	start := time.Now()
-	result := ProbeResult{TargetID: t.ID, Name: t.Name, Model: t.Model, Status: "checking", CheckedAt: start.UTC()}
+	result := ProbeResult{TargetID: t.ID, Name: t.Name, CheckType: t.CheckType, Model: t.Model, Status: "checking", CheckedAt: start.UTC()}
 	finish := func(healthy bool, status, code, message string, httpStatus int) ProbeResult {
 		result.Healthy = healthy
 		result.Status = status
@@ -31,6 +31,29 @@ func (r *Runtime) probeTarget(parent context.Context, t Target, timeoutSec int) 
 	}
 	ctx, cancel := context.WithTimeout(parent, time.Duration(timeoutSec)*time.Second)
 	defer cancel()
+	if t.CheckType == "provider" {
+		type outcome struct {
+			resp HostHTTPResponse
+			err  error
+		}
+		ch := make(chan outcome, 1)
+		go func() {
+			resp, err := r.host.HTTPDo(ctx, HostHTTPRequest{Method: http.MethodGet, URL: t.BaseURL, Headers: map[string][]string{"Accept": {"application/json, text/plain, */*"}, "User-Agent": {"cpa-model-health-monitor/" + pluginVersion}}})
+			ch <- outcome{resp: resp, err: err}
+		}()
+		select {
+		case <-ctx.Done():
+			return finish(false, "timeout", "provider_timeout", "Provider endpoint timed out", 0)
+		case out := <-ch:
+			if out.err != nil {
+				return finish(false, "network_error", "provider_unreachable", "CPA could not reach the provider endpoint", 0)
+			}
+			if out.resp.StatusCode >= 100 && out.resp.StatusCode < 500 {
+				return finish(true, "provider_reachable", "", "", out.resp.StatusCode)
+			}
+			return finish(false, "upstream_error", "provider_unavailable", fmt.Sprintf("Provider endpoint returned HTTP %d", out.resp.StatusCode), out.resp.StatusCode)
+		}
+	}
 	material := credentialMaterial{Token: t.APIKey, BaseURL: t.BaseURL}
 	if t.Source == "cpa_auth" {
 		raw, err := r.host.GetAuth(ctx, t.AuthIndex)
@@ -41,6 +64,12 @@ func (r *Runtime) probeTarget(parent context.Context, t Target, timeoutSec int) 
 		if err != nil {
 			return finish(false, "credential_error", "credential_invalid", err.Error(), 0)
 		}
+	}
+	if t.CheckType == "credential" {
+		if material.Token == "" {
+			return finish(false, "credential_error", "missing_token", "The selected credential does not contain a usable token", 0)
+		}
+		return finish(true, "credential_ready", "", "", 0)
 	}
 	if material.BaseURL == "" {
 		if t.Protocol == "codex_responses" {

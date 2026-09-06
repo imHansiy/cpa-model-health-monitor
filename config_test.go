@@ -45,3 +45,18 @@ func TestNormalizeRejectsDuplicateTargets(t *testing.T) {
 		t.Fatal("expected duplicate target error")
 	}
 }
+
+func TestNormalizeProviderAndCredentialChecks(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Targets = []Target{
+		{ID: "provider", Enabled: true, CheckType: "provider", BaseURL: "https://api.example.com/v1"},
+		{ID: "credential", Enabled: true, CheckType: "credential", Source: "cpa_auth", AuthIndex: "auth-1"},
+	}
+	got, err := normalizeConfig(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Targets[0].AuthMode != "none" || got.Targets[0].Source != "direct" {
+		t.Fatalf("provider target was not normalized: %+v", got.Targets[0])
+	}
+}

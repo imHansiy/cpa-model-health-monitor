@@ -88,3 +88,31 @@ func TestEndpointJoining(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+func TestProviderProbeChecksReachabilityWithoutCredential(t *testing.T) {
+	host := &fakeHost{response: HostHTTPResponse{StatusCode: 401}}
+	runtime := NewRuntime(host, t.TempDir())
+	result := runtime.probeTarget(context.Background(), Target{ID: "provider", Name: "Provider", Enabled: true, CheckType: "provider", BaseURL: "https://api.example.com/v1"}, 5)
+	if !result.Healthy || result.Status != "provider_reachable" || result.HTTPStatus != 401 {
+		t.Fatalf("provider probe = %+v", result)
+	}
+	host.mu.Lock()
+	defer host.mu.Unlock()
+	if len(host.getAuthIndexes) != 0 || len(host.requests) != 1 || host.requests[0].Method != "GET" {
+		t.Fatalf("unexpected host calls: auth=%v requests=%+v", host.getAuthIndexes, host.requests)
+	}
+}
+
+func TestCredentialProbeReadsSelectedCredentialWithoutModelCall(t *testing.T) {
+	host := &fakeHost{auth: map[string]json.RawMessage{"auth-1": json.RawMessage(`{"access_token":"selected-secret"}`)}}
+	runtime := NewRuntime(host, t.TempDir())
+	result := runtime.probeTarget(context.Background(), Target{ID: "credential", Name: "Credential", Enabled: true, CheckType: "credential", Source: "cpa_auth", AuthIndex: "auth-1"}, 5)
+	if !result.Healthy || result.Status != "credential_ready" {
+		t.Fatalf("credential probe = %+v", result)
+	}
+	host.mu.Lock()
+	defer host.mu.Unlock()
+	if len(host.getAuthIndexes) != 1 || len(host.requests) != 0 {
+		t.Fatalf("unexpected host calls: auth=%v requests=%+v", host.getAuthIndexes, host.requests)
+	}
+}

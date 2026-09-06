@@ -4,9 +4,9 @@
     {
       "id": "cpa-model-health-monitor",
       "name": "CPA Model Health Monitor",
-      "description": "Checks exact channel, credential and model combinations and emails only on state changes.",
+      "description": "Separately checks AI provider reachability, credential readability and exact model calls, with state-change-only email alerts.",
       "author": "hansiy",
-      "version": "0.1.2",
+      "version": "0.2.0",
       "repository": "https://github.com/imHansiy/cpa-model-health-monitor",
       "homepage": "https://github.com/imHansiy/cpa-model-health-monitor",
       "license": "MIT",

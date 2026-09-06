@@ -36,6 +36,7 @@ type Target struct {
 	ID            string            `json:"id"`
 	Name          string            `json:"name"`
 	Enabled       bool              `json:"enabled"`
+	CheckType     string            `json:"check_type,omitempty"`
 	Source        string            `json:"source"`
 	AuthIndex     string            `json:"auth_index,omitempty"`
 	Protocol      string            `json:"protocol"`
@@ -121,6 +122,13 @@ func normalizeConfig(c Config) (Config, error) {
 		t := &c.Targets[i]
 		t.ID = strings.TrimSpace(t.ID)
 		t.Name = strings.TrimSpace(t.Name)
+		t.CheckType = strings.ToLower(strings.TrimSpace(t.CheckType))
+		if t.CheckType == "" {
+			t.CheckType = "model"
+		}
+		if t.CheckType != "provider" && t.CheckType != "credential" && t.CheckType != "model" {
+			return c, fmt.Errorf("target %s check_type must be provider, credential, or model", t.ID)
+		}
 		t.Source = strings.ToLower(strings.TrimSpace(t.Source))
 		t.Protocol = strings.ToLower(strings.TrimSpace(t.Protocol))
 		t.BaseURL = strings.TrimRight(strings.TrimSpace(t.BaseURL), "/")
@@ -139,14 +147,29 @@ func normalizeConfig(c Config) (Config, error) {
 		if t.Name == "" {
 			t.Name = t.ID
 		}
-		if t.Source == "" {
+		if t.CheckType == "provider" {
+			t.Source = "direct"
+			t.AuthMode = "none"
+		} else if t.Source == "" {
 			t.Source = "direct"
 		}
 		if t.Source != "direct" && t.Source != "cpa_auth" {
 			return c, fmt.Errorf("target %s source must be direct or cpa_auth", t.ID)
 		}
-		if t.Source == "cpa_auth" && t.AuthIndex == "" {
+		if t.CheckType != "provider" && t.Source == "cpa_auth" && t.AuthIndex == "" {
 			return c, fmt.Errorf("target %s requires auth_index", t.ID)
+		}
+		if t.CheckType == "provider" {
+			if t.BaseURL == "" {
+				return c, fmt.Errorf("target %s provider check requires base_url", t.ID)
+			}
+			if _, err := validateHTTPURL(t.BaseURL); err != nil {
+				return c, fmt.Errorf("target %s base_url: %w", t.ID, err)
+			}
+			continue
+		}
+		if t.CheckType == "credential" {
+			continue
 		}
 		if t.Model == "" {
 			return c, fmt.Errorf("target %s requires model", t.ID)
@@ -189,6 +212,17 @@ func normalizeConfig(c Config) (Config, error) {
 		}
 	}
 	return c, nil
+}
+
+func validateHTTPURL(raw string) (*url.URL, error) {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return nil, errors.New("invalid URL")
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return nil, errors.New("URL must use http or https")
+	}
+	return u, nil
 }
 
 func mergeSecrets(next, old Config) Config {
