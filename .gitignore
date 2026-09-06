@@ -1,0 +1,7 @@
+/dist/
+/.tools/
+/.build-output.*/
+/plugins/
+*.h
+*.dll
+*.so

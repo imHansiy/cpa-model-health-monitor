@@ -1,0 +1,13 @@
+plugins:
+  enabled: true
+  dir: "plugins"
+  configs:
+    cpa-model-health-monitor:
+      enabled: true
+      priority: 1
+      interval_min: 30
+      timeout_sec: 30
+      failure_threshold: 1
+      recovery_threshold: 1
+      notify_initial: false
+      max_concurrency: 4

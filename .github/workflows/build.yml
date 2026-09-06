@@ -1,0 +1,77 @@
+name: CI and Release
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - run: go test ./...
+      - run: go vet ./...
+
+  package:
+    needs: test
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Build plugin
+        env:
+          PLUGIN_ID: cpa-model-health-monitor
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          if [[ "${GITHUB_REF_TYPE}" != "tag" ]]; then
+            version="0.0.0-${GITHUB_SHA::12}"
+          fi
+          mkdir -p "out" "package" "dist"
+          docker buildx build \
+            --platform "linux/${ARCH}" \
+            --build-arg "VERSION=${version}" \
+            --build-arg "TARGET_GOARCH=${ARCH}" \
+            --target artifact \
+            --output type=local,dest=out .
+          cp "out/${PLUGIN_ID}.so" "package/${PLUGIN_ID}.so"
+          (cd package && zip -9 "../dist/${PLUGIN_ID}_${version}_linux_${ARCH}.zip" "${PLUGIN_ID}.so")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-linux-${{ matrix.arch }}
+          path: dist/*.zip
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: package-linux-*
+          path: release
+          merge-multiple: true
+      - name: Generate checksums
+        working-directory: release
+        run: sha256sum *.zip > checksums.txt
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" release/*.zip release/checksums.txt --verify-tag --generate-notes --title "${GITHUB_REF_NAME}"
