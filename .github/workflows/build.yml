@@ -30,26 +30,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.24.x'
+          cache: false
+      - name: Install arm64 C compiler
+        if: matrix.arch == 'arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes gcc-aarch64-linux-gnu
       - name: Build plugin
         env:
           PLUGIN_ID: cpa-model-health-monitor
           ARCH: ${{ matrix.arch }}
+          CC: ${{ matrix.arch == 'arm64' && 'aarch64-linux-gnu-gcc' || 'gcc' }}
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
           if [[ "${GITHUB_REF_TYPE}" != "tag" ]]; then
             version="0.0.0-${GITHUB_SHA::12}"
           fi
-          mkdir -p "out" "package" "dist"
-          docker buildx build \
-            --platform "linux/${ARCH}" \
-            --build-arg "VERSION=${version}" \
-            --build-arg "TARGET_GOARCH=${ARCH}" \
-            --target artifact \
-            --output type=local,dest=out .
-          cp "out/${PLUGIN_ID}.so" "package/${PLUGIN_ID}.so"
+          mkdir -p "package" "dist"
+          CGO_ENABLED=1 GOOS=linux GOARCH="${ARCH}" go build \
+            -buildmode=c-shared \
+            -trimpath \
+            -ldflags="-s -w -X main.pluginVersion=${version}" \
+            -o "package/${PLUGIN_ID}.so" .
+          file "package/${PLUGIN_ID}.so"
           (cd package && zip -9 "../dist/${PLUGIN_ID}_${version}_linux_${ARCH}.zip" "${PLUGIN_ID}.so")
       - uses: actions/upload-artifact@v4
         with:
