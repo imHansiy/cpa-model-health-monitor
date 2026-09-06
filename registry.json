@@ -4,9 +4,9 @@
     {
       "id": "cpa-model-health-monitor",
       "name": "CPA Model Health Monitor",
-      "description": "Separately checks AI provider reachability, credential readability and exact model calls, with state-change-only email alerts.",
+      "description": "Auto-discovers CPA providers, credentials and models, runs real model checks through existing CPA routing, and sends state-change-only email alerts.",
       "author": "hansiy",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "auth_required": false,
       "install": {
         "type": "direct",
@@ -14,14 +14,14 @@
           {
             "goos": "linux",
             "goarch": "amd64",
-            "url": "https://github.com/imHansiy/cpa-model-health-monitor/releases/download/v0.2.0/cpa-model-health-monitor_0.2.0_linux_amd64.zip",
-            "sha256": "0ba8c2b5cc27ec61bafc4fb2767bdba0b04916e09a2087715e631fecbc371141"
+            "url": "https://github.com/imHansiy/cpa-model-health-monitor/releases/download/v0.3.0/cpa-model-health-monitor_0.3.0_linux_amd64.zip",
+            "sha256": "cda44d4586d774070a9baf0a927a4f826a71b737362c0897d748464d3e7a48d8"
           },
           {
             "goos": "linux",
             "goarch": "arm64",
-            "url": "https://github.com/imHansiy/cpa-model-health-monitor/releases/download/v0.2.0/cpa-model-health-monitor_0.2.0_linux_arm64.zip",
-            "sha256": "f55c3c87b8cd7e4ddee6df7f956dc336003d2e68eaf3fbdd67a888c6348853f0"
+            "url": "https://github.com/imHansiy/cpa-model-health-monitor/releases/download/v0.3.0/cpa-model-health-monitor_0.3.0_linux_arm64.zip",
+            "sha256": "8788cd954751c155f839c44d3d5e7e6f7b6d8d0138cf08b013480154b163d3c7"
           }
         ]
       },
