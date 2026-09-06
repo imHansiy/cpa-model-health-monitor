@@ -210,6 +210,20 @@ func mergeSecrets(next, old Config) Config {
 }
 
 func publicConfig(c Config) PublicConfig {
+	// Config is passed by value, but slices and maps still share their backing
+	// storage. Clone the nested values before redacting so a management read can
+	// never erase credentials from the live runtime configuration.
+	c.SMTP.To = append([]string(nil), c.SMTP.To...)
+	c.Targets = append([]Target(nil), c.Targets...)
+	for i := range c.Targets {
+		if c.Targets[i].Headers != nil {
+			headers := make(map[string]string, len(c.Targets[i].Headers))
+			for key, value := range c.Targets[i].Headers {
+				headers[key] = value
+			}
+			c.Targets[i].Headers = headers
+		}
+	}
 	secretSet := map[string]bool{}
 	for i := range c.Targets {
 		secretSet[c.Targets[i].ID] = c.Targets[i].APIKey != ""

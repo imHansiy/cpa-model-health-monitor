@@ -103,8 +103,8 @@ SMTP 支持 STARTTLS、隐式 TLS 和无 TLS。生产环境建议使用 STARTTLS
 
 ```text
 GET  /v0/management/plugins/cpa-model-health-monitor/status
-GET  /v0/management/plugins/cpa-model-health-monitor/config
-PUT  /v0/management/plugins/cpa-model-health-monitor/config
+GET  /v0/management/plugins/cpa-model-health-monitor/settings
+PUT  /v0/management/plugins/cpa-model-health-monitor/settings
 GET  /v0/management/plugins/cpa-model-health-monitor/auth-files
 GET  /v0/management/plugins/cpa-model-health-monitor/history
 POST /v0/management/plugins/cpa-model-health-monitor/run

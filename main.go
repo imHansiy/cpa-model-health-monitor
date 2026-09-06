@@ -51,7 +51,7 @@ const (
 	abiVersion = 1
 )
 
-var pluginVersion = "0.1.1"
+var pluginVersion = "0.1.2"
 
 type envelope struct {
 	OK     bool            `json:"ok"`
@@ -221,7 +221,7 @@ func registrationPayload() registration {
 func managementRegistrationPayload() managementRegistration {
 	base := "/plugins/" + pluginID
 	return managementRegistration{Routes: []managementRoute{
-		{http.MethodGet, base + "/status"}, {http.MethodGet, base + "/config"}, {http.MethodPut, base + "/config"},
+		{http.MethodGet, base + "/status"}, {http.MethodGet, base + "/settings"}, {http.MethodPut, base + "/settings"},
 		{http.MethodGet, base + "/auth-files"}, {http.MethodGet, base + "/history"},
 		{http.MethodPost, base + "/run"}, {http.MethodPost, base + "/test-email"},
 	}, Resources: []managementResource{{Path: "/panel", Menu: "Model Health Monitor", Description: "Configure exact channel, credential and model probes with state-change email alerts."}}}
@@ -238,9 +238,9 @@ func handleManagement(req managementRequest) managementResponse {
 		return managementResponse{StatusCode: 200, Headers: map[string][]string{"Content-Type": {"text/html; charset=utf-8"}, "Cache-Control": {"no-store"}}, Body: []byte(panelHTML)}
 	case req.Method == http.MethodGet && path == "/status":
 		return jsonResponse(200, rt.Status())
-	case req.Method == http.MethodGet && path == "/config":
+	case req.Method == http.MethodGet && path == "/settings":
 		return jsonResponse(200, rt.PublicConfig())
-	case req.Method == http.MethodPut && path == "/config":
+	case req.Method == http.MethodPut && path == "/settings":
 		var cfg Config
 		if err := json.Unmarshal(req.Body, &cfg); err != nil {
 			return jsonResponse(400, map[string]any{"error": "invalid JSON"})
