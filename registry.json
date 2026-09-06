@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "plugins": [
     {
       "id": "cpa-model-health-monitor",
@@ -7,6 +7,24 @@
       "description": "Separately checks AI provider reachability, credential readability and exact model calls, with state-change-only email alerts.",
       "author": "hansiy",
       "version": "0.2.0",
+      "auth_required": false,
+      "install": {
+        "type": "direct",
+        "artifacts": [
+          {
+            "goos": "linux",
+            "goarch": "amd64",
+            "url": "https://github.com/imHansiy/cpa-model-health-monitor/releases/download/v0.2.0/cpa-model-health-monitor_0.2.0_linux_amd64.zip",
+            "sha256": "0ba8c2b5cc27ec61bafc4fb2767bdba0b04916e09a2087715e631fecbc371141"
+          },
+          {
+            "goos": "linux",
+            "goarch": "arm64",
+            "url": "https://github.com/imHansiy/cpa-model-health-monitor/releases/download/v0.2.0/cpa-model-health-monitor_0.2.0_linux_arm64.zip",
+            "sha256": "f55c3c87b8cd7e4ddee6df7f956dc336003d2e68eaf3fbdd67a888c6348853f0"
+          }
+        ]
+      },
       "repository": "https://github.com/imHansiy/cpa-model-health-monitor",
       "homepage": "https://github.com/imHansiy/cpa-model-health-monitor",
       "license": "MIT",
