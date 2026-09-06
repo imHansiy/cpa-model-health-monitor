@@ -54,6 +54,47 @@ func (r *Runtime) probeTarget(parent context.Context, t Target, timeoutSec int) 
 			return finish(false, "upstream_error", "provider_unavailable", fmt.Sprintf("Provider endpoint returned HTTP %d", out.resp.StatusCode), out.resp.StatusCode)
 		}
 	}
+	if t.CheckType == "model" && t.Source == "cpa_runtime" {
+		now := time.Now().UnixNano()
+		a := int(now%71) + 11
+		b := int((now/97)%67) + 13
+		expected := "CPA_CHECK=" + strconv.Itoa(a+b)
+		prompt := fmt.Sprintf("Add %d and %d. Reply with exactly %s and nothing else.", a, b, expected)
+		body, err := json.Marshal(map[string]any{"model": t.Model, "messages": []any{map[string]any{"role": "user", "content": prompt}}, "max_tokens": 24, "temperature": 0})
+		if err != nil {
+			return finish(false, "config_error", "request_build_failed", err.Error(), 0)
+		}
+		type outcome struct {
+			resp HostModelExecutionResponse
+			err  error
+		}
+		ch := make(chan outcome, 1)
+		go func() {
+			resp, errCall := r.host.ExecuteModel(ctx, HostModelExecutionRequest{EntryProtocol: "openai", ExitProtocol: "openai", Model: t.Model, Body: body, Headers: map[string][]string{"Content-Type": {"application/json"}}})
+			ch <- outcome{resp: resp, err: errCall}
+		}()
+		var resp HostModelExecutionResponse
+		select {
+		case <-ctx.Done():
+			return finish(false, "timeout", "timeout", "The CPA-routed model probe timed out", 0)
+		case out := <-ch:
+			if out.err != nil {
+				return finish(false, "routing_error", "cpa_model_execute_failed", "CPA could not route the model request", 0)
+			}
+			resp = out.resp
+		}
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return finish(false, classifyHTTP(resp.StatusCode), classifyHTTP(resp.StatusCode), fmt.Sprintf("CPA model route returned HTTP %d", resp.StatusCode), resp.StatusCode)
+		}
+		text, err := parseProbeResponse("openai_chat", resp.Body)
+		if err != nil {
+			return finish(false, "response_error", "response_format_error", err.Error(), resp.StatusCode)
+		}
+		if strings.TrimSpace(text) != expected {
+			return finish(false, "response_error", "unexpected_output", "Model output did not match the verification value", resp.StatusCode)
+		}
+		return finish(true, "healthy", "", "", resp.StatusCode)
+	}
 	material := credentialMaterial{Token: t.APIKey, BaseURL: t.BaseURL}
 	if t.Source == "cpa_auth" {
 		raw, err := r.host.GetAuth(ctx, t.AuthIndex)

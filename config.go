@@ -47,6 +47,7 @@ type Target struct {
 	AccountIDPath string            `json:"account_id_path,omitempty"`
 	AuthMode      string            `json:"auth_mode,omitempty"`
 	Headers       map[string]string `json:"headers,omitempty"`
+	Origin        string            `json:"origin,omitempty"`
 }
 
 type PublicConfig struct {
@@ -137,6 +138,7 @@ func normalizeConfig(c Config) (Config, error) {
 		t.TokenPath = strings.TrimSpace(t.TokenPath)
 		t.AccountIDPath = strings.TrimSpace(t.AccountIDPath)
 		t.AuthMode = strings.ToLower(strings.TrimSpace(t.AuthMode))
+		t.Origin = strings.ToLower(strings.TrimSpace(t.Origin))
 		if t.ID == "" {
 			return c, fmt.Errorf("target %d requires id", i+1)
 		}
@@ -153,11 +155,14 @@ func normalizeConfig(c Config) (Config, error) {
 		} else if t.Source == "" {
 			t.Source = "direct"
 		}
-		if t.Source != "direct" && t.Source != "cpa_auth" {
-			return c, fmt.Errorf("target %s source must be direct or cpa_auth", t.ID)
+		if t.Source != "direct" && t.Source != "cpa_auth" && t.Source != "cpa_runtime" {
+			return c, fmt.Errorf("target %s source must be direct, cpa_auth, or cpa_runtime", t.ID)
 		}
 		if t.CheckType != "provider" && t.Source == "cpa_auth" && t.AuthIndex == "" {
 			return c, fmt.Errorf("target %s requires auth_index", t.ID)
+		}
+		if t.Source == "cpa_runtime" && t.CheckType != "model" {
+			return c, fmt.Errorf("target %s cpa_runtime source only supports model checks", t.ID)
 		}
 		if t.CheckType == "provider" {
 			if t.BaseURL == "" {
@@ -171,6 +176,12 @@ func normalizeConfig(c Config) (Config, error) {
 		if t.CheckType == "credential" {
 			continue
 		}
+		if t.Source == "cpa_runtime" {
+			t.Protocol = "openai_chat"
+			t.AuthMode = "none"
+			t.BaseURL = ""
+			t.AuthIndex = ""
+		}
 		if t.Model == "" {
 			return c, fmt.Errorf("target %s requires model", t.ID)
 		}
@@ -179,7 +190,7 @@ func normalizeConfig(c Config) (Config, error) {
 		default:
 			return c, fmt.Errorf("target %s has unsupported protocol", t.ID)
 		}
-		if t.BaseURL == "" && t.Protocol != "codex_responses" {
+		if t.Source != "cpa_runtime" && t.BaseURL == "" && t.Protocol != "codex_responses" {
 			return c, fmt.Errorf("target %s requires base_url", t.ID)
 		}
 		if t.BaseURL != "" {

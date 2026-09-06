@@ -60,3 +60,16 @@ func TestNormalizeProviderAndCredentialChecks(t *testing.T) {
 		t.Fatalf("provider target was not normalized: %+v", got.Targets[0])
 	}
 }
+
+func TestNormalizeCPARuntimeModel(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Targets = []Target{{ID: "auto", Enabled: true, CheckType: "model", Source: "cpa_runtime", Model: "gpt-test", BaseURL: "https://ignored.example", AuthIndex: "ignored", AuthMode: "bearer"}}
+	got, err := normalizeConfig(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := got.Targets[0]
+	if target.Protocol != "openai_chat" || target.AuthMode != "none" || target.BaseURL != "" || target.AuthIndex != "" {
+		t.Fatalf("runtime target was not normalized: %+v", target)
+	}
+}

@@ -26,6 +26,7 @@ type Host interface {
 	ListAuthFiles(context.Context) ([]AuthFile, error)
 	GetAuth(context.Context, string) (json.RawMessage, error)
 	HTTPDo(context.Context, HostHTTPRequest) (HostHTTPResponse, error)
+	ExecuteModel(context.Context, HostModelExecutionRequest) (HostModelExecutionResponse, error)
 	Log(context.Context, string, string, map[string]any)
 }
 
@@ -56,6 +57,48 @@ type HostHTTPResponse struct {
 	StatusCode int
 	Headers    map[string][]string
 	Body       []byte
+}
+
+type HostModelExecutionRequest struct {
+	EntryProtocol string              `json:"entry_protocol"`
+	ExitProtocol  string              `json:"exit_protocol"`
+	Model         string              `json:"model"`
+	Stream        bool                `json:"stream"`
+	Body          []byte              `json:"body"`
+	Headers       map[string][]string `json:"headers,omitempty"`
+}
+
+type HostModelExecutionResponse struct {
+	StatusCode int
+	Headers    map[string][]string
+	Body       []byte
+}
+
+func (r *HostModelExecutionResponse) UnmarshalJSON(data []byte) error {
+	var v struct {
+		StatusCode  int                 `json:"StatusCode"`
+		StatusCode2 int                 `json:"status_code"`
+		Headers     map[string][]string `json:"Headers"`
+		Headers2    map[string][]string `json:"headers"`
+		Body        []byte              `json:"Body"`
+		Body2       []byte              `json:"body"`
+	}
+	if err := json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+	r.StatusCode = v.StatusCode
+	if r.StatusCode == 0 {
+		r.StatusCode = v.StatusCode2
+	}
+	r.Headers = v.Headers
+	if r.Headers == nil {
+		r.Headers = v.Headers2
+	}
+	r.Body = v.Body
+	if r.Body == nil {
+		r.Body = v.Body2
+	}
+	return nil
 }
 
 func (r *HostHTTPResponse) UnmarshalJSON(data []byte) error {
@@ -126,6 +169,16 @@ func (realHost) HTTPDo(ctx context.Context, req HostHTTPRequest) (HostHTTPRespon
 	}
 	var v HostHTTPResponse
 	if err := callHost("host.http.do", req, &v); err != nil {
+		return v, err
+	}
+	return v, nil
+}
+func (realHost) ExecuteModel(ctx context.Context, req HostModelExecutionRequest) (HostModelExecutionResponse, error) {
+	if err := ctx.Err(); err != nil {
+		return HostModelExecutionResponse{}, err
+	}
+	var v HostModelExecutionResponse
+	if err := callHost("host.model.execute", req, &v); err != nil {
 		return v, err
 	}
 	return v, nil

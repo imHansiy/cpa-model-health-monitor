@@ -15,6 +15,8 @@ type fakeHost struct {
 	getAuthIndexes   []string
 	requests         []HostHTTPRequest
 	response         HostHTTPResponse
+	modelResponse    HostModelExecutionResponse
+	modelRequests    []HostModelExecutionRequest
 	err              error
 	echoVerification bool
 }
@@ -47,6 +49,25 @@ func (f *fakeHost) HTTPDo(_ context.Context, req HostHTTPRequest) (HostHTTPRespo
 	response := f.response
 	f.mu.Unlock()
 	return response, f.err
+}
+func (f *fakeHost) ExecuteModel(_ context.Context, req HostModelExecutionRequest) (HostModelExecutionResponse, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.modelRequests = append(f.modelRequests, req)
+	if f.echoVerification {
+		var body map[string]any
+		_ = json.Unmarshal(req.Body, &body)
+		messages, _ := body["messages"].([]any)
+		if len(messages) > 0 {
+			message, _ := messages[0].(map[string]any)
+			prompt, _ := message["content"].(string)
+			if marker := strings.LastIndex(prompt, "CPA_CHECK="); marker >= 0 {
+				value := strings.TrimSuffix(prompt[marker:], " and nothing else.")
+				return HostModelExecutionResponse{StatusCode: 200, Body: []byte(`{"choices":[{"message":{"content":` + strconv.Quote(value) + `}}]}`)}, nil
+			}
+		}
+	}
+	return f.modelResponse, f.err
 }
 func (f *fakeHost) Log(context.Context, string, string, map[string]any) {}
 
@@ -114,5 +135,23 @@ func TestCredentialProbeReadsSelectedCredentialWithoutModelCall(t *testing.T) {
 	defer host.mu.Unlock()
 	if len(host.getAuthIndexes) != 1 || len(host.requests) != 0 {
 		t.Fatalf("unexpected host calls: auth=%v requests=%+v", host.getAuthIndexes, host.requests)
+	}
+}
+
+func TestCPARuntimeProbeUsesHostRoutingWithoutReadingCredential(t *testing.T) {
+	host := &fakeHost{echoVerification: true}
+	runtime := NewRuntime(host, t.TempDir())
+	result := runtime.probeTarget(context.Background(), Target{ID: "auto-model", Name: "Auto model", Enabled: true, CheckType: "model", Source: "cpa_runtime", Model: "gpt-test"}, 5)
+	if !result.Healthy {
+		t.Fatalf("runtime-routed probe failed: %+v", result)
+	}
+	host.mu.Lock()
+	defer host.mu.Unlock()
+	if len(host.getAuthIndexes) != 0 || len(host.requests) != 0 || len(host.modelRequests) != 1 {
+		t.Fatalf("unexpected calls: auth=%v http=%d model=%d", host.getAuthIndexes, len(host.requests), len(host.modelRequests))
+	}
+	request := host.modelRequests[0]
+	if request.Model != "gpt-test" || request.EntryProtocol != "openai" || request.ExitProtocol != "openai" {
+		t.Fatalf("unexpected model request: %+v", request)
 	}
 }
