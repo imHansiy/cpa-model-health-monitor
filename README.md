@@ -134,7 +134,15 @@ ARCH=arm64 ./build.sh
 推送 `v*` 标签时，GitHub Actions 会自动构建 linux/amd64 和 linux/arm64，按照 CPA 商店要求生成
 `cpa-model-health-monitor_<版本>_linux_<架构>.zip`、`checksums.txt`，并发布 GitHub Release。
 
-仓库根目录的 `registry.json` 是可以直接添加到 CPA `plugins.store-registries` 的 schema v1 注册表，也可将其中的插件条目提交到官方 [CLIProxyAPI Plugins Store](https://github.com/router-for-me/CLIProxyAPI-Plugins-Store)。
+仓库根目录的 `registry.json` 是 CPA schema v1 注册表。尚未收录到官方商店时，可以先把它作为自定义商店源：
+
+```yaml
+plugins:
+  store-sources:
+    - "https://raw.githubusercontent.com/imHansiy/cpa-model-health-monitor/main/registry.json"
+```
+
+也可以将 `registry.json` 中的插件条目提交到官方 [CLIProxyAPI Plugins Store](https://github.com/router-for-me/CLIProxyAPI-Plugins-Store)。
 
 ## 参考实现
 
